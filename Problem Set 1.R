@@ -3,66 +3,6 @@
 
 ## Conduct a simple simulation study to explore how well OLS predicts as a function f the number of predcitors.
 
-n = 50 ## Training Observations
-N =  100 ## Tset Observations
-
-p = seq(5, 45, by = 5) # Dimenstions (Variables)
-R = 1000 ## Number of times
-
-X <- matrix(nrow = n, ncol = 46)
-Beta <- c(runif(46,0,5))
-
-for (i in 1:n) {
-  
-  X[i,] <- c(1, rnorm(45))
-  
-}
-
-Y <- X %*% Beta + rnorm(n)
-
-training <- as.data.frame(cbind(Y,X))
-
-X <- matrix(nrow = N, ncol = 46)
-
-for (i in 1:N) {
-  
-  X[i,] <- c(1, rnorm(45))
-  
-}
-
-Y <- X %*% Beta + rnorm(N)
-
-test <- as.data.frame(cbind(Y,X))
-
-counter <- 1
-
-for(i in seq(5, 45, by=5)) {
-  
-  model_name <- paste("model_", counter, sep="")
-  assign(model_name, lm(V1 ~ ., data = training[, c(1, 2:i)]))
-  
-  counter <- 1 + counter
-  
-}
-
-counter <- 1
-
-for(i in 0:8) {
-  
-  model_name <- paste("model_", counter, "_MSE",  sep ="")
-  assign(model_name,(seq(1:1000)))
-
-  
-  counter <- counter + 1
-  
-}
-
-
-
-f_hat <- predict(model_1, test)
-model_1_MSE <- mean(test[,1] - f_hat)^2
-
-
 ## Rewrite the whole thing :)
 
 MSE <- matrix(0, ncol = 9, nrow = 1000)

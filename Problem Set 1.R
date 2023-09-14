@@ -16,18 +16,19 @@ for (j in seq(5,45, by = 5)) {
 for (i in 1:1000) {
   
   X <- cbind(rep(1,50), matrix(rep(rnorm(45),50), nrow = 50, ncol = 45, byrow = FALSE))
-  Y <- X %*% c(runif(46,0,5)) + rnorm(50)
+  Y <- X %*% runif(46,0,5) + rnorm(50)
   Training <- as.data.frame(cbind(Y,X))
   
-  X <- cbind(rep(1,100), matrix(rep(rnorm(45),100), nrow = 100, ncol = 45))
-  Y <- X %*% c(runif(46,0,5)) + rnorm(100)
+  X <- cbind(rep(1,100), matrix(rnorm(45*100), nrow = 100, ncol = 45))
+  Y <- X %*% runif(46,0,5) + rnorm(100)
+  
   Test <- as.data.frame(cbind(Y,X))
   
   Model <- lm(V1 ~ ., data = Training[, 1:j])
   
   fhat <- predict(Model, newdata = Test)
   
-  MSE[i,c] <- mean((Test[,1] - fhat)^2)
+  MSE[i,c] <- mse(Y, fhat)
   
   }
   
@@ -35,4 +36,10 @@ for (i in 1:1000) {
 
 summary(MSE)
 
+colors <- c("#00AFBB", "#E7B800")
 
+plot(Y, fhat, col = colors)
+
+legend("bottomright", legend = c("Actual", "Predicted"),
+       col =  c("#00AFBB", "#E7B800"),
+       pch = c(16, 17, 18) )

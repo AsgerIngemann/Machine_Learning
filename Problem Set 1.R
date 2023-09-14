@@ -1,3 +1,8 @@
+######################### Problem Set 1 #######################################
+
+
+
+
 dgp = function(n, p, beta = rep(1, (p+1)), mu_x = rep(0, p), Sigma_x = diag(rep(1,p)), sigma_eps = 1){
   
   # Libraries and functions:

@@ -6,78 +6,74 @@
 # In this exercise we conduct a simple simulation study to explore how well
 # OLS predicts as a function of the number of predictors.
 
-# Min kode
-
+# Konstants
 n <- 50
-p <- seq(5,45, by = 5)
+N <- 100
+P <- seq(5,45, by = 5)
+R <- 1000
 
-for (i in p){
-  b1 <- 
-  beta <- runif((i + 1), 0, 5)
-  return(beta)
+# Training the model
+olsBeta <- function(YTrain, XTrain){
+  BetaHat <- solve(t(XTrain) %*% XTrain) %*% (t(XTrain) %*% YTrain)
+  return(BetaHat)
 }
 
-for (i in p){
-  dgp = function(n, p, beta = runif((p+1),0,5), mu_x = rep(0, p), Sigma_x = diag(rep(1,p)), sigma_eps = 1){
+# Estimating the Y-values
+LinearPredictor <- function(BetaHat, XTest){
+  YHat <- XTest %*% BetaHat
+  return(YHat)
+}
+
+# Testing the model
+MeanSquaredError <- function(YHat, YTest){
+  mse <- mean((YHat - YTest)^2 )
+  return(mse)
+}
+
+# Simulating the data
+DataSimulator <- function(size, p, beta){
+  X <- cbind(rep(1, times = size), matrix(rnorm(size * p, 0, 1), size, p))
+  eps <- rnorm(size, 0, 1)
+  Y <- X %*% beta + eps
+  
+  return(list(X = X, Y = Y))
+}
+
+GetData <- function(p){
+  beta <- runif(p + 1, 0, 5)
+  
+  TrainingData <- DataSimulator(n, p, beta)
+  TestingData <- DataSimulator(N, p, beta)
+  
+  return(list(TestingData = TestingData, TrainingData = TrainingData))
+}
+
+# Conducting the test
+Study <- function(p){
+  Data <- GetData(p)
+  # Training
+  BetaHat <- olsBeta(Data$TrainingData$Y, Data$TrainingData$X)
+  # Estimation
+  YHat <- LinearPredictor(BetaHat, Data$TestingData$X)
+  # Test
+  mse <- MeanSquaredError(YHat, Data$TestingData$Y)
+  
+  return(mse)
+}
+
+# Simulation study
+SimulationStudy <- function(){
+
+  StudyResults <- rep(0, length(P))
+  for (p in P){
     
-    # Libraries and functions:
-    require(mvtnorm)         # For multivariate normal.
+    PResults <- rep(0, R)
+    for (r in 1:R){
+      PResults[r] <- Study(p)
+    }
     
-    # Drawing predictors as multivariate normal:
-    X <- rmvnorm(n, mean = mu_x, sigma = Sigma_x)
-    
-    # Noise is also normal:
-    eps <- rnorm(n, 0, sigma_eps)
-    
-    # Outcome:
-    Y <- cbind(rep(1, n), X) %*% beta + eps
-    
-    # Data:
-    data <- data.frame(Y, X)
-    return(data)
+    StudyResults[p/5] <- mean(PResults)
   }
+  
+  return(StudyResults)
 }
-
-data
-
-# Agsers kode
-
-MSE <- matrix(0, ncol = 9, nrow = 1000)
-c <- 0
-
-for (j in seq(5,45, by = 5)) {
-  
-  j <- j+1
-  c <- c + 1
-  
-  for (i in 1:1000) {
-    
-    X <- cbind(rep(1,50), matrix(rep(rnorm(45),50), nrow = 50, ncol = 45, 
-                                 byrow = FALSE))
-    Y <- X %*% runif(46,0,5) + rnorm(50)
-    Training <- as.data.frame(cbind(Y,X))
-    
-    X <- cbind(rep(1,100), matrix(rnorm(45*100), nrow = 100, ncol = 45))
-    Y <- X %*% runif(46,0,5) + rnorm(100)
-    
-    Test <- as.data.frame(cbind(Y,X))
-    
-    Model <- lm(V1 ~ ., data = Training[, 1:j])
-    
-    fhat <- predict(Model, newdata = Test)
-    
-    MSE[i,c] <- mse(Y, fhat)
-    
-  }
-  
-}
-
-summary(MSE)
-
-colors <- c("#00AFBB", "#E7B800")
-
-plot(Y, fhat, col = colors)
-
-legend("bottomright", legend = c("Actual", "Predicted"),
-       col =  c("#00AFBB", "#E7B800"),
-       pch = c(16, 17, 18) )

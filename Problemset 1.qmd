@@ -6,6 +6,11 @@ editor: visual
 author: "Asger Rasmussen & Heidi Larsen"
 ---
 
+```{r, include=FALSE}
+library(Metrics)
+library(glmnet)
+```
+
 ## Exercise 1
 
 In this exercise we conduct a simple simulation study to explore how well OLS predicts as a function of the number of predictors. Consider the following linear model:
@@ -62,10 +67,133 @@ In this exercise we conduct a simulation study that explores how OLS, ridge and 
 
 $Y_i = X^{'}_i. \beta + \epsilon_i$
 
-where $X_i$ is a $(p + 1)$-dimensional vector, whose first entry is $1$ and the rest are standard normal variables. Let $ε_i ∼ N (0, 1)$. Simulate a training dataset from this model with $n = 50$ and a testing dataset with $N = 100$ observations. Let $p = 45$ and draw the elements of $β$ as $U (0.2, 1).$ Randomly choose $p_z$ elements of $β$ (except the first) and set them to zero, with pz taking the values $10, 20, 30, 40.$ Estimate the model by OLS, ridge and LASSO using the training data and calculate the test MSE using the testing set. Use cross-validation with $k = 3$ folds to choose tuning parameters. Repeat the process $R = 30$ times and calculate the mean of the MSE for each value of $p_z$ and each estimator.
+where $X_i$ is a $(p + 1)$-dimensional vector, whose first entry is $1$ and the rest are standard normal variables. Let $ε_i ∼ N (0, 1)$. Simulate a training dataset from this model with $n = 50$ and a testing dataset with $N = 100$ observations. Let $p = 45$ and draw the elements of $β$ as $U (0.2, 1).$ Randomly choose $p_z$ elements of $β$ (except the first) and set them to zero, with $p_z$ taking the values $10, 20, 30, 40.$ Estimate the model by OLS, ridge and LASSO using the training data and calculate the test MSE using the testing set. Use cross-validation with $k = 3$ folds to choose tuning parameters. Repeat the process $R = 30$ times and calculate the mean of the MSE for each value of $p_z$ and each estimator.
 
 ## Solution
 
 ```{r}
-1 + 1
+
+n = 50
+N = 100
+p = 45
+pz = seq(10,40,10)
+k = 3
+R = 30
+Storage_OLS = as.data.frame(matrix(1:120,nrow = 30, ncol = 4))
+Storage_Ridge = as.data.frame(matrix(1:120, nrow = 30, ncol = 4))
+Storage_Lasso = as.data.frame(matrix(1:120, nrow = 30, ncol = 4))
+colnames(Storage) <- c("pz_10","pz_20","pz_30","pz_40")
+
+
+## Generate training X
+
+
+Generate_data <- function(n,p){
+  
+  X <- cbind(rep(1,n),  matrix((rnorm(n*p)),nrow = n, ncol = p))
+  Beta <- runif(p+1, min = 0.2, max = 1)
+  Y <- X %*% Beta + rnorm(n, 0, 1)
+  
+  Data <- as.data.frame(cbind(Y, X))
+  return(Data)
+  
+}
+
+OLS_estimator <- function(training, test, j,p) {
+  
+   #Estimate Beta hat OLS
+  Beta_hat_lm <- lm(training$V1  ~ 0 + ., data = training, )
+
+  ## Set coefficients to 0.
+  Beta_hat_lm[c(sample(seq(2,p+1),j))] <- 0 
+
+  ## Get Y hat
+  Y_hat <- as.matrix(test[,2:p+2]) %*% Beta_hat_lm
+  
+  return(Y_hat)
+  
+}
+
+Ridge_estimator <- function(training, test, j, p, k) {
+  
+  X <- as.matrix(training[,-1])
+  Y <- as.matrix(training[,1])
+  
+  Ridge <- cv.glmnet(X, Y, alpha = 0, nfolds = k, lamda = grid)
+  
+  lambda <- Ridge$lambda.min
+  
+  Beta_hat_r <- solve(t(X) %*% X + lambda * diag(ncol(X))) %*% t(X) %*% Y
+  
+  Beta_hat_r[c(sample(seq(2,(p+1)),j))] <- 0
+  
+  Y_hat <- as.matrix(test[,2:(p+2)]) %*% Beta_hat_r
+  
+  return(Y_hat)
+  
+}
+
+Lasso_estimator <- function(training, test, j, p, k) {
+  
+  X_training <- as.matrix(training[,-1])
+  Y_training <- as.matrix(training[,1])
+  
+  X_test <- as.matrix(test[,-1])
+  Y_test <- as.matrix(test[,1])
+  
+  Lasso <- cv.glmnet(X_training, Y_training, alpha = 1, nfolds = k, lamda = grid)
+  
+  lambda <- Lasso$lambda.min
+  
+  Lasso_est <- glmnet(X_training, Y_training, lambda = lambda)
+  
+  Y_hat <- X_test %*% Lasso_est$beta 
+  
+  return(Y_hat)
+  
+}
+
+Lasso_estimator(Training_data, Test_data, 10, 45, 3)
+
+for(i in seq(1:R)) {
+
+  for (j in pz) {
+
+  ## Get data
+  Training_data <- Generate_data(n,p)
+  Test_data <- Generate_data(N,p)
+  
+  ## OLS Y_hat
+  Y_hat_ols <- OLS_estimator(Training_data, Test_data, j,p)
+  
+  ## Ridge Y_hat
+  Y_hat_ridge <- Ridge_estimator(Training_data, Test_data, j,p,k)
+  
+  ## Lasso Y_hat
+  Y_hat_lasso <- as.matrix(Lasso_estimator(Training_data, Test_data, j,p,k))
+
+  ## Get MSE and store it
+  Storage_OLS[i,(j/10)] <- mse(Test_data[,1],Y_hat_ols)
+  Storage_Ridge[i,(j/10)] <- mse(Test_data[,1],Y_hat_ridge)
+  Storage_Lasso[i,(j/10)] <- mse(Test_data[,1],Y_hat_lasso)
+
+  }
+  
+}
+
+colMeans(Storage_Ridge)
+colMeans(Storage_Lasso)
+colMeans(Storage_OLS)
 ```
+
+\
+
+\
+
+\
+
+\
+
+\
+
+## 

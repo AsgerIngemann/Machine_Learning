@@ -1,0 +1,71 @@
+---
+title: "Problem Set 1"
+subtitle: "Prediction & Linear Regression"
+format: html
+editor: visual
+author: "Asger Rasmussen & Heidi Larsen"
+---
+
+## Exercise 1
+
+In this exercise we conduct a simple simulation study to explore how well OLS predicts as a function of the number of predictors. Consider the following linear model:
+
+$Y_i = X^{'}_i. \beta + \epsilon_i$
+
+where $X_i$ is a $(p + 1)$-dimensional vector, whose first entry is $1$ and the rest are standard normal variables. Let the entries of $β$ be $U (0, 5)$ and $ε_i ∼ N (0, 1)$. Simulate a training dataset from this model with $n = 50$ and a testing dataset with $N = 100$ observations. Let p take the values $5, 10, . . . , 40, 45.$ Estimate the model by OLS using the train data, and calculate the test MSE using the testing set. Repeat the process $R = 1 000$ times and calculate the mean of the MSE for each value of $p$.
+
+## Solution
+
+```{r, warning=FALSE}
+MSE <- matrix(0, ncol = 9, nrow = 1000)
+c <- 0
+
+for (j in seq(5,45, by = 5)) {
+  
+  j <- j+1
+  c <- c + 1
+  
+for (i in 1:1000) {
+  
+  X <- cbind(rep(1,50), matrix(rep(rnorm(45),50), nrow = 50, ncol = 45, byrow = FALSE))
+  Y <- X %*% runif(46,0,5) + rnorm(50)
+  Training <- as.data.frame(cbind(Y,X))
+  
+  X <- cbind(rep(1,100), matrix(rnorm(45*100), nrow = 100, ncol = 45))
+  Y <- X %*% runif(46,0,5) + rnorm(100)
+  
+  Test <- as.data.frame(cbind(Y,X))
+  
+  Model <- lm(V1 ~ ., data = Training[, 1:j])
+  
+  fhat <- predict(Model, newdata = Test)
+  
+  }
+  
+}
+
+summary(MSE)
+
+colors <- c("#00AFBB", "#E7B800")
+
+plot(Y, fhat, col = colors)
+
+legend("bottomright", legend = c("Actual", "Predicted"),
+       col =  c("#00AFBB", "#E7B800"),
+       pch = c(16, 17, 18) )
+abline(a = X, b = fhat)
+```
+
+## Exercise 2
+
+In this exercise we conduct a simulation study that explores how OLS, ridge and LASSO do when we vary the number of predictors with zero coefficients. Consider the following linear model
+
+$Y_i = X^{'}_i. \beta + \epsilon_i$
+
+where $X_i$ is a $(p + 1)$-dimensional vector, whose first entry is $1$ and the rest are standard normal variables. Let $ε_i ∼ N (0, 1)$. Simulate a training dataset from this model with $n = 50$ and a testing dataset with $N = 100$ observations. Let $p = 45$ and draw the elements of $β$ as $U (0.2, 1).$ Randomly choose $p_z$ elements of $β$ (except the first) and set them to zero, with pz taking the values $10, 20, 30, 40.$ Estimate the model by OLS, ridge and LASSO using the training data and calculate the test MSE using the testing set. Use cross-validation with $k = 3$ folds to choose tuning parameters. Repeat the process $R = 30$ times and calculate the mean of the MSE for each value of $p_z$ and each estimator.
+
+## Solution
+
+```{r}
+1 + 1
+```

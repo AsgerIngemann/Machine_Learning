@@ -193,7 +193,204 @@ colMeans(Storage_Lasso)
 colMeans(Storage_OLS)
 ```
 
+## Exercise 5
+
+```{r}
+
+set.seed(1)
+
+n = 500
+p = 4
+
+X <- rnorm(n, 0, 1)
+e <- rnorm(n, 0, 1)
+Beta <- runif(4, 0, 5)
+Y <- Beta[1] + Beta[2]*X + Beta[3]*X^2 + Beta[4]*X^3 + e
+
+df <- as.data.frame(cbind(Y, X))
+
+df <- df %>%
+  mutate(X_2 = X^2,
+         X_3 = X^3,
+         X_4 = X^4,
+         X_5 = X^5,
+         X_6 = X^6,
+         X_7 = X^7,
+         X_8 = X^8,
+         X_9 = X^9,
+         X_10 = X^10)
+
+
+trainIndex <- createDataPartition(df$Y, p = 0.8, list = FALSE)
+train_data <- df[trainIndex,]
+test_data <- df[-trainIndex,]
+
+exhaustive <- summary(regsubsets(Y ~ ., data = train_data, method = "exhaustive", nvmax = 10))
+forward <- summary(regsubsets(Y ~ ., data = train_data, method = "forward", nvmax = 10))
+backward <- summary(regsubsets(Y ~ ., data = train_data, method = "backward", nvmax = 10))
+
+exhaustive$outmat[which.min(exhaustive$bic),]
+forward$outmat[which.min(forward$bic),]
+backward$outmat[which.min(backward$bic),]
+
+X_m <- model.matrix(Y ~ ., data = train_data)
+Y_v <- train_data$Y
+
+cv.out <- cv.glmnet(X_m, Y_v, nfolds = 10)
+lasso_model <- glmnet(X_m, Y_v, alpha = 1, lambda = cv.out$lambda.min)
+
+lasso_model$beta
+```
+
+```{r}
+
+Y <- Beta[1] + Beta[2]*X^7 + e
+
+df <- as.data.frame(cbind(Y, X))
+
+df <- df %>%
+  mutate(X_2 = X^2,
+         X_3 = X^3,
+         X_4 = X^4,
+         X_5 = X^5,
+         X_6 = X^6,
+         X_7 = X^7,
+         X_8 = X^8,
+         X_9 = X^9,
+         X_10 = X^10)
+
+
+trainIndex <- createDataPartition(df$Y, p = 0.8, list = FALSE)
+train_data <- df[trainIndex,]
+test_data <- df[-trainIndex,]
+
+exhaustive <- summary(regsubsets(Y ~ ., data = train_data, method = "exhaustive", nvmax = 10))
+forward <- summary(regsubsets(Y ~ ., data = train_data, method = "forward", nvmax = 10))
+backward <- summary(regsubsets(Y ~ ., data = train_data, method = "backward", nvmax = 10))
+
+exhaustive$outmat[which.min(exhaustive$bic),]
+forward$outmat[which.min(forward$bic),]
+backward$outmat[which.min(backward$bic),]
+
+X_m <- model.matrix(Y ~ ., data = train_data)
+Y_v <- train_data$Y
+
+cv.out <- cv.glmnet(X_m, Y_v, nfolds = 10)
+lasso_model <- glmnet(X_m, Y_v, alpha = 1, lambda = cv.out$lambda.min)
+
+lasso_model$beta
+```
+
 ## Exercise 6
+
+```{r}
+
+library(readr)
+Hitters <- read_csv("Problemset 1/Hitters.csv")
+
+```
+
+```{r}
+
+sum(is.na(Hitters))
+
+Hitters <- complete(mice(Hitters))
+
+```
+
+```{r}
+
+regfit.full <- regsubsets(Salary ~ ., Hitters, method = "forward", nvmax = 19)
+
+reg.summary <- summary(regfit.full)
+
+par(mfrow = c(2,2))
+plot(reg.summary$adjr2, xlab = "Number of Variables",
+     ylab = "Adjusted R squared", type = "l")
+plot(reg.summary$bic, xlab = "Number of Variables",
+     ylab = "BIC", type = "l")
+
+which.max(reg.summary$adjr2)
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+```
+
+```{r}
+
+set.seed(3)
+train <- sample(c(TRUE, FALSE), nrow(Hitters),
+               replace = TRUE)
+test <- (!train)
+```
+
+```{r}
+
+regfit.best <- regsubsets(Salary ~ ., data = Hitters[train, ], nvmax = 19, method = "forward")
+
+test.mat <- model.matrix(Salary ~ ., data = Hitters[test, ])
+
+val.errors <- rep(NA, 19)
+
+for(i in 1:19) {
+  coefi <- coef(regfit.best, id = i)
+  pred <- test.mat[, names(coefi)] %*% coefi
+  val.errors[i] <- mean((Hitters$Salary[test] - pred)^2)
+  
+}
+```
+
+```{r}
+
+Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  cor()
+
+```
+
+```{r}
+
+df <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors)
+
+```
+
+```{r}
+
+
+model_lm <- lm(Salary ~ ., data = df)
+
+
+summary(model_lm)
+```
+
+```{r}
+
+set.seed(1)
+
+model <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  glm(Salary ~ ., data = .)
+
+cv_results <- cv.glm(df, model, K = 10)
+
+```
+
+```{r}
+
+X <- model.matrix(Salary ~ ., Hitters)[,-1]
+Y <- Hitters$Salary
+
+cv.out <- cv.glmnet(X, Y, alpha = 1, nfolds = 10, lamda = grid)
+bestlam <- cv.out$lambda.min
+
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[])
+
+
+lasso$lambda.min
+```
 
 ```{r}
 

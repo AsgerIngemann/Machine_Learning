@@ -16,6 +16,7 @@ library(leaps)
 library(caret)
 
 options(scipen=999)
+
 ```
 
 ## Exercise 1

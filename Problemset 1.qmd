@@ -13,9 +13,12 @@ library(mice)
 library(boot)
 library(tidyverse)
 library(leaps)
+<<<<<<< HEAD
 library(caret)
 
 options(scipen=999)
+=======
+>>>>>>> d67c6eac3e35c8deb48293b62b69e020cce3e11d
 ```
 
 ## Exercise 1
@@ -194,6 +197,123 @@ colMeans(Storage_OLS)
 ```
 
 ## Exercise 6
+<<<<<<< HEAD
+=======
+
+```{r}
+
+library(readr)
+Hitters <- read_csv("Problemset 1/Hitters.csv")
+
+```
+
+```{r}
+
+sum(is.na(Hitters))
+
+Hitters <- complete(mice(Hitters))
+
+```
+
+```{r}
+
+regfit.full <- regsubsets(Salary ~ ., Hitters, method = "forward", nvmax = 19)
+
+reg.summary <- summary(regfit.full)
+
+par(mfrow = c(2,2))
+plot(reg.summary$adjr2, xlab = "Number of Variables",
+     ylab = "Adjusted R squared", type = "l")
+plot(reg.summary$bic, xlab = "Number of Variables",
+     ylab = "BIC", type = "l")
+
+which.max(reg.summary$adjr2)
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+```
+
+```{r}
+
+set.seed(3)
+train <- sample(c(TRUE, FALSE), nrow(Hitters),
+               replace = TRUE)
+test <- (!train)
+```
+
+```{r}
+
+regfit.best <- regsubsets(Salary ~ ., data = Hitters[train, ], nvmax = 19, method = "forward")
+
+test.mat <- model.matrix(Salary ~ ., data = Hitters[test, ])
+
+val.errors <- rep(NA, 19)
+
+for(i in 1:19) {
+  coefi <- coef(regfit.best, id = i)
+  pred <- test.mat[, names(coefi)] %*% coefi
+  val.errors[i] <- mean((Hitters$Salary[test] - pred)^2)
+  
+}
+```
+
+```{r}
+
+Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  cor()
+
+```
+
+```{r}
+
+df <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors)
+
+```
+
+```{r}
+
+
+model_lm <- lm(Salary ~ ., data = df)
+
+
+summary(model_lm)
+```
+
+```{r}
+
+set.seed(1)
+
+model <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  glm(Salary ~ ., data = .)
+
+cv_results <- cv.glm(df, model, K = 10)
+
+```
+
+```{r}
+
+X <- model.matrix(Salary ~ ., Hitters)[,-1]
+Y <- Hitters$Salary
+
+cv.out <- cv.glmnet(X, Y, alpha = 1, nfolds = 10, lamda = grid)
+bestlam <- cv.out$lambda.min
+
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[])
+
+
+lasso$lambda.min
+```
+
+```{r}
+
+
+```
+>>>>>>> d67c6eac3e35c8deb48293b62b69e020cce3e11d
 
 ```{r}
 

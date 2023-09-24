@@ -13,9 +13,18 @@ library(mice)
 library(boot)
 library(tidyverse)
 library(leaps)
+<<<<<<< HEAD
 library(caret)
 
 options(scipen=999)
+=======
+<<<<<<< HEAD
+library(caret)
+
+options(scipen=999)
+=======
+>>>>>>> d67c6eac3e35c8deb48293b62b69e020cce3e11d
+>>>>>>> 905943f17bc36d350531b76fbd9a58266a3b8541
 ```
 
 ## Exercise 1
@@ -282,6 +291,11 @@ lasso_model$beta
 ```
 
 ## Exercise 6
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> 905943f17bc36d350531b76fbd9a58266a3b8541
 
 ```{r}
 
@@ -394,6 +408,15 @@ lasso$lambda.min
 
 ```{r}
 
+<<<<<<< HEAD
+=======
+
+```
+>>>>>>> d67c6eac3e35c8deb48293b62b69e020cce3e11d
+
+```{r}
+
+>>>>>>> 905943f17bc36d350531b76fbd9a58266a3b8541
 library(readr)
 Hitters <- read_csv("Problemset 1/Hitters.csv")
 

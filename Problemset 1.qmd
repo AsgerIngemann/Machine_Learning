@@ -1,0 +1,651 @@
+---
+title: "Problem Set 1"
+subtitle: "Prediction & Linear Regression"
+format: html
+editor: visual
+author: "Asger Rasmussen & Heidi Larsen"
+---
+
+```{r, include=FALSE}
+library(Metrics)
+library(glmnet)
+library(mice)
+library(boot)
+library(tidyverse)
+library(leaps)
+<<<<<<< HEAD
+library(caret)
+
+options(scipen=999)
+=======
+<<<<<<< HEAD
+library(caret)
+
+options(scipen=999)
+=======
+>>>>>>> d67c6eac3e35c8deb48293b62b69e020cce3e11d
+>>>>>>> 905943f17bc36d350531b76fbd9a58266a3b8541
+```
+
+## Exercise 1
+
+In this exercise we conduct a simple simulation study to explore how well OLS predicts as a function of the number of predictors. Consider the following linear model:
+
+$Y_i = X^{'}_i. \beta + \epsilon_i$
+
+where $X_i$ is a $(p + 1)$-dimensional vector, whose first entry is $1$ and the rest are standard normal variables. Let the entries of $β$ be $U (0, 5)$ and $ε_i ∼ N (0, 1)$. Simulate a training dataset from this model with $n = 50$ and a testing dataset with $N = 100$ observations. Let p take the values $5, 10, . . . , 40, 45.$ Estimate the model by OLS using the train data, and calculate the test MSE using the testing set. Repeat the process $R = 1 000$ times and calculate the mean of the MSE for each value of $p$.
+
+## Solution
+
+```{r, warning=FALSE}
+MSE <- matrix(0, ncol = 9, nrow = 1000)
+c <- 0
+
+for (j in seq(5,45, by = 5)) {
+  
+  j <- j+1
+  c <- c + 1
+  
+for (i in 1:1000) {
+  
+  X <- cbind(rep(1,50), matrix(rep(rnorm(45),50), nrow = 50, ncol = 45, byrow = FALSE))
+  Y <- X %*% runif(46,0,5) + rnorm(50)
+  Training <- as.data.frame(cbind(Y,X))
+  
+  X <- cbind(rep(1,100), matrix(rnorm(45*100), nrow = 100, ncol = 45))
+  Y <- X %*% runif(46,0,5) + rnorm(100)
+  
+  Test <- as.data.frame(cbind(Y,X))
+  
+  Model <- lm(V1 ~ ., data = Training[, 1:j])
+  
+  fhat <- predict(Model, newdata = Test)
+  
+  }
+  
+}
+
+summary(MSE)
+
+colors <- c("#00AFBB", "#E7B800")
+
+plot(Y, fhat, col = colors)
+
+legend("bottomright", legend = c("Actual", "Predicted"),
+       col =  c("#00AFBB", "#E7B800"),
+       pch = c(16, 17, 18) )
+abline(a = X, b = fhat)
+```
+
+## Exercise 2
+
+In this exercise we conduct a simulation study that explores how OLS, ridge and LASSO do when we vary the number of predictors with zero coefficients. Consider the following linear model
+
+$Y_i = X^{'}_i. \beta + \epsilon_i$
+
+where $X_i$ is a $(p + 1)$-dimensional vector, whose first entry is $1$ and the rest are standard normal variables. Let $ε_i ∼ N (0, 1)$. Simulate a training dataset from this model with $n = 50$ and a testing dataset with $N = 100$ observations. Let $p = 45$ and draw the elements of $β$ as $U (0.2, 1).$ Randomly choose $p_z$ elements of $β$ (except the first) and set them to zero, with $p_z$ taking the values $10, 20, 30, 40.$ Estimate the model by OLS, ridge and LASSO using the training data and calculate the test MSE using the testing set. Use cross-validation with $k = 3$ folds to choose tuning parameters. Repeat the process $R = 30$ times and calculate the mean of the MSE for each value of $p_z$ and each estimator.
+
+## Solution
+
+```{r}
+
+n = 50
+N = 100
+p = 45
+pz = seq(10,40,10)
+k = 3
+R = 30
+Storage_OLS = as.data.frame(matrix(1:120,nrow = 30, ncol = 4))
+Storage_Ridge = as.data.frame(matrix(1:120, nrow = 30, ncol = 4))
+Storage_Lasso = as.data.frame(matrix(1:120, nrow = 30, ncol = 4))
+colnames(Storage) <- c("pz_10","pz_20","pz_30","pz_40")
+
+
+## Generate training X
+
+
+Generate_data <- function(n,p){
+  
+  X <- cbind(rep(1,n),  matrix((rnorm(n*p)),nrow = n, ncol = p))
+  Beta <- runif(p+1, min = 0.2, max = 1)
+  Y <- X %*% Beta + rnorm(n, 0, 1)
+  
+  Data <- as.data.frame(cbind(Y, X))
+  return(Data)
+  
+}
+
+OLS_estimator <- function(training, test, j,p) {
+  
+   #Estimate Beta hat OLS
+  Beta_hat_lm <- lm(training$V1  ~ 0 + ., data = training, )
+
+  ## Set coefficients to 0.
+  Beta_hat_lm[c(sample(seq(2,p+1),j))] <- 0 
+
+  ## Get Y hat
+  Y_hat <- as.matrix(test[,2:p+2]) %*% Beta_hat_lm
+  
+  return(Y_hat)
+  
+}
+
+Ridge_estimator <- function(training, test, j, p, k) {
+  
+  X <- as.matrix(training[,-1])
+  Y <- as.matrix(training[,1])
+  
+  Ridge <- cv.glmnet(X, Y, alpha = 0, nfolds = k, lamda = grid)
+  
+  lambda <- Ridge$lambda.min
+  
+  Beta_hat_r <- solve(t(X) %*% X + lambda * diag(ncol(X))) %*% t(X) %*% Y
+  
+  Beta_hat_r[c(sample(seq(2,(p+1)),j))] <- 0
+  
+  Y_hat <- as.matrix(test[,2:(p+2)]) %*% Beta_hat_r
+  
+  return(Y_hat)
+  
+}
+
+Lasso_estimator <- function(training, test, j, p, k) {
+  
+  X_training <- as.matrix(training[,-1])
+  Y_training <- as.matrix(training[,1])
+  
+  X_test <- as.matrix(test[,-1])
+  Y_test <- as.matrix(test[,1])
+  
+  Lasso <- cv.glmnet(X_training, Y_training, alpha = 1, nfolds = k, lamda = grid)
+  
+  lambda <- Lasso$lambda.min
+  
+  Lasso_est <- glmnet(X_training, Y_training, lambda = lambda)
+  
+  Y_hat <- X_test %*% Lasso_est$beta 
+  
+  return(Y_hat)
+  
+}
+
+Lasso_estimator(Training_data, Test_data, 10, 45, 3)
+
+for(i in seq(1:R)) {
+
+  for (j in pz) {
+
+  ## Get data
+  Training_data <- Generate_data(n,p)
+  Test_data <- Generate_data(N,p)
+  
+  ## OLS Y_hat
+  Y_hat_ols <- OLS_estimator(Training_data, Test_data, j,p)
+  
+  ## Ridge Y_hat
+  Y_hat_ridge <- Ridge_estimator(Training_data, Test_data, j,p,k)
+  
+  ## Lasso Y_hat
+  Y_hat_lasso <- as.matrix(Lasso_estimator(Training_data, Test_data, j,p,k))
+
+  ## Get MSE and store it
+  Storage_OLS[i,(j/10)] <- mse(Test_data[,1],Y_hat_ols)
+  Storage_Ridge[i,(j/10)] <- mse(Test_data[,1],Y_hat_ridge)
+  Storage_Lasso[i,(j/10)] <- mse(Test_data[,1],Y_hat_lasso)
+
+  }
+  
+}
+
+colMeans(Storage_Ridge)
+colMeans(Storage_Lasso)
+colMeans(Storage_OLS)
+```
+
+## Exercise 5
+
+```{r}
+
+set.seed(1)
+
+n = 500
+p = 4
+
+X <- rnorm(n, 0, 1)
+e <- rnorm(n, 0, 1)
+Beta <- runif(4, 0, 5)
+Y <- Beta[1] + Beta[2]*X + Beta[3]*X^2 + Beta[4]*X^3 + e
+
+df <- as.data.frame(cbind(Y, X))
+
+df <- df %>%
+  mutate(X_2 = X^2,
+         X_3 = X^3,
+         X_4 = X^4,
+         X_5 = X^5,
+         X_6 = X^6,
+         X_7 = X^7,
+         X_8 = X^8,
+         X_9 = X^9,
+         X_10 = X^10)
+
+
+trainIndex <- createDataPartition(df$Y, p = 0.8, list = FALSE)
+train_data <- df[trainIndex,]
+test_data <- df[-trainIndex,]
+
+exhaustive <- summary(regsubsets(Y ~ ., data = train_data, method = "exhaustive", nvmax = 10))
+forward <- summary(regsubsets(Y ~ ., data = train_data, method = "forward", nvmax = 10))
+backward <- summary(regsubsets(Y ~ ., data = train_data, method = "backward", nvmax = 10))
+
+exhaustive$outmat[which.min(exhaustive$bic),]
+forward$outmat[which.min(forward$bic),]
+backward$outmat[which.min(backward$bic),]
+
+X_m <- model.matrix(Y ~ ., data = train_data)
+Y_v <- train_data$Y
+
+cv.out <- cv.glmnet(X_m, Y_v, nfolds = 10)
+lasso_model <- glmnet(X_m, Y_v, alpha = 1, lambda = cv.out$lambda.min)
+
+lasso_model$beta
+```
+
+```{r}
+
+Y <- Beta[1] + Beta[2]*X^7 + e
+
+df <- as.data.frame(cbind(Y, X))
+
+df <- df %>%
+  mutate(X_2 = X^2,
+         X_3 = X^3,
+         X_4 = X^4,
+         X_5 = X^5,
+         X_6 = X^6,
+         X_7 = X^7,
+         X_8 = X^8,
+         X_9 = X^9,
+         X_10 = X^10)
+
+
+trainIndex <- createDataPartition(df$Y, p = 0.8, list = FALSE)
+train_data <- df[trainIndex,]
+test_data <- df[-trainIndex,]
+
+exhaustive <- summary(regsubsets(Y ~ ., data = train_data, method = "exhaustive", nvmax = 10))
+forward <- summary(regsubsets(Y ~ ., data = train_data, method = "forward", nvmax = 10))
+backward <- summary(regsubsets(Y ~ ., data = train_data, method = "backward", nvmax = 10))
+
+exhaustive$outmat[which.min(exhaustive$bic),]
+forward$outmat[which.min(forward$bic),]
+backward$outmat[which.min(backward$bic),]
+
+X_m <- model.matrix(Y ~ ., data = train_data)
+Y_v <- train_data$Y
+
+cv.out <- cv.glmnet(X_m, Y_v, nfolds = 10)
+lasso_model <- glmnet(X_m, Y_v, alpha = 1, lambda = cv.out$lambda.min)
+
+lasso_model$beta
+```
+
+## Exercise 6
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> 905943f17bc36d350531b76fbd9a58266a3b8541
+
+```{r}
+
+library(readr)
+Hitters <- read_csv("Problemset 1/Hitters.csv")
+
+```
+
+```{r}
+
+sum(is.na(Hitters))
+
+Hitters <- complete(mice(Hitters))
+
+```
+
+```{r}
+
+regfit.full <- regsubsets(Salary ~ ., Hitters, method = "forward", nvmax = 19)
+
+reg.summary <- summary(regfit.full)
+
+par(mfrow = c(2,2))
+plot(reg.summary$adjr2, xlab = "Number of Variables",
+     ylab = "Adjusted R squared", type = "l")
+plot(reg.summary$bic, xlab = "Number of Variables",
+     ylab = "BIC", type = "l")
+
+which.max(reg.summary$adjr2)
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+```
+
+```{r}
+
+set.seed(3)
+train <- sample(c(TRUE, FALSE), nrow(Hitters),
+               replace = TRUE)
+test <- (!train)
+```
+
+```{r}
+
+regfit.best <- regsubsets(Salary ~ ., data = Hitters[train, ], nvmax = 19, method = "forward")
+
+test.mat <- model.matrix(Salary ~ ., data = Hitters[test, ])
+
+val.errors <- rep(NA, 19)
+
+for(i in 1:19) {
+  coefi <- coef(regfit.best, id = i)
+  pred <- test.mat[, names(coefi)] %*% coefi
+  val.errors[i] <- mean((Hitters$Salary[test] - pred)^2)
+  
+}
+```
+
+```{r}
+
+Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  cor()
+
+```
+
+```{r}
+
+df <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors)
+
+```
+
+```{r}
+
+
+model_lm <- lm(Salary ~ ., data = df)
+
+
+summary(model_lm)
+```
+
+```{r}
+
+set.seed(1)
+
+model <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  glm(Salary ~ ., data = .)
+
+cv_results <- cv.glm(df, model, K = 10)
+
+```
+
+```{r}
+
+X <- model.matrix(Salary ~ ., Hitters)[,-1]
+Y <- Hitters$Salary
+
+cv.out <- cv.glmnet(X, Y, alpha = 1, nfolds = 10, lamda = grid)
+bestlam <- cv.out$lambda.min
+
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[])
+
+
+lasso$lambda.min
+```
+
+```{r}
+
+<<<<<<< HEAD
+=======
+
+```
+>>>>>>> d67c6eac3e35c8deb48293b62b69e020cce3e11d
+
+```{r}
+
+>>>>>>> 905943f17bc36d350531b76fbd9a58266a3b8541
+library(readr)
+Hitters <- read_csv("Problemset 1/Hitters.csv")
+
+```
+
+```{r}
+
+sum(is.na(Hitters))
+
+Hitters <- complete(mice(Hitters))
+
+```
+
+```{r}
+
+regfit.full <- regsubsets(Salary ~ ., Hitters, method = "forward", nvmax = 19)
+
+reg.summary <- summary(regfit.full)
+
+par(mfrow = c(2,2))
+plot(reg.summary$adjr2, xlab = "Number of Variables",
+     ylab = "Adjusted R squared", type = "l")
+plot(reg.summary$bic, xlab = "Number of Variables",
+     ylab = "BIC", type = "l")
+
+which.max(reg.summary$adjr2)
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+```
+
+```{r}
+
+set.seed(3)
+train <- sample(c(TRUE, FALSE), nrow(Hitters),
+               replace = TRUE)
+test <- (!train)
+```
+
+```{r}
+
+regfit.best <- regsubsets(Salary ~ ., data = Hitters[train, ], nvmax = 19, method = "forward")
+
+test.mat <- model.matrix(Salary ~ ., data = Hitters[test, ])
+
+val.errors <- rep(NA, 19)
+
+for(i in 1:19) {
+  coefi <- coef(regfit.best, id = i)
+  pred <- test.mat[, names(coefi)] %*% coefi
+  val.errors[i] <- mean((Hitters$Salary[test] - pred)^2)
+  
+}
+```
+
+```{r}
+
+Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  cor()
+
+```
+
+```{r}
+
+df <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors)
+
+```
+
+```{r}
+
+
+model_lm <- lm(Salary ~ ., data = df)
+
+
+summary(model_lm)
+```
+
+```{r}
+
+set.seed(1)
+
+model <- Hitters %>%
+  select(Salary, AtBat, Hits, HmRun, Runs, RBI, Walks, Years, CAtBat, CHits, CHmRun
+         ,CRuns, CRBI, CWalks, PutOuts, Assists, Errors) %>%
+  glm(Salary ~ ., data = .)
+
+cv_results <- cv.glm(df, model, K = 10)
+
+```
+
+```{r}
+
+X <- model.matrix(Salary ~ ., Hitters)[,-1]
+Y <- Hitters$Salary
+
+cv.out <- cv.glmnet(X, Y, alpha = 1, nfolds = 10, lamda = grid)
+bestlam <- cv.out$lambda.min
+
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[])
+
+
+lasso$lambda.min
+```
+
+## Exercise 7
+
+```{r}
+
+ToyotaCorolla <- as.data.frame(read_csv("Problemset 1/ToyotaCorolla.csv"))
+
+ToyotaCorolla %>%
+  mutate_if(is.character, as.factor) %>%
+  summarise_all(~sum(is.na(.)))
+```
+
+```{r}
+
+ToyotaCorolla %>%
+  select_if(is.numeric) %>% 
+  cor(.$Price, .) %>%
+  as.data.frame()
+
+ToyotaCorolla <- ToyotaCorolla %>%
+  select(-Id, -Model) %>%
+  filter(Fuel_Type != "CNG")
+  
+```
+
+```{r}
+
+df <- model.matrix(Price ~ ., data = ToyotaCorolla)
+
+set.seed(1)
+
+trainIndex <- createDataPartition(ToyotaCorolla$Price, p = 0.7, list = FALSE)
+
+train_data <- ToyotaCorolla[trainIndex,]
+
+test_data <- ToyotaCorolla[-trainIndex,]
+
+```
+
+```{r}
+
+regit.forward <- regsubsets(Price ~ ., method = "forward", data = train_data, nvmax = 36)
+
+regit.summary <- summary(regit.forward)
+
+which.min(regit.summary$bic)
+
+## So model 17 is the lowest BIC
+
+forward_names <- names(coef(regit.forward, which.min(regit.summary$bic)))[-1]
+formula_str <- paste("Price ~", paste(forward_names, collapse = " + "))
+formula_obj <- as.formula(formula_str)
+
+forward_model <- lm(Price ~ Mfg_Month + KM + Fuel_Type + HP + Met_Color + Color + Doors, Mfr_Guarantee + BOVAG_Guarantee + Guarantee_Period + ABS + Airbag_1 + Boardcomputer + CD_Player + Radio + Cylinders, data = train_data)
+
+## So according to forward step wise selection this is the best model!
+```
+
+```{r}
+
+X <- model.matrix(Price ~ ., data = train_data)
+
+Y <- train_data$Price
+
+cv.out <- cv.glmnet(X, Y, nfolds = 10)
+
+lasso_model <- glmnet(X, Y, alpha = 1, lamda = cv.out$lambda.min)
+
+plot(lasso_model)
+```
+
+```{r}
+
+X_test_Data <- model.matrix(Price ~ ., data = test_data)
+
+lasso.pred <- predict(lasso_model, s = cv.out$lambda.min, newx = X_test_Data)
+
+test_data <- as.data.frame(cbind(test_data, "Y_hat" = lasso.pred))
+
+```
+
+```{r}
+
+lm_model <- lm(Price ~ ., data = train_data)
+
+lm_predit <- predict(lm_model, newdata = test_data)
+
+test_data <- cbind(test_data, lm_predit)
+```
+
+```{r}
+lm_model <- lm(log(Price) ~ ., data = train_data)
+
+lm_predit <- predict(lm_model, newdata = test_data)
+
+test_data <- cbind(test_data, log_ols = exp(lm_predit))
+```
+
+```{r}
+
+test_data %>%
+  rename(Lasso_Y_hat = s1,
+         OLS_Y_hat = lm_predit,
+         OLS_logY_hat = log_ols) %>%
+  select(Price, Lasso_Y_hat, OLS_Y_hat, OLS_logY_hat) %>%
+  mutate(mse_lasso = (Price - Lasso_Y_hat)^2,
+         mse_OLS = (Price - OLS_Y_hat)^2,
+         mse_OLS_log = (Price - OLS_logY_hat)^2) %>%
+  summarise(mse_lasso = mean(mse_lasso),
+            mse_OLS = mean(mse_OLS),
+            mse_OLS_log = mean(mse_OLS_log))
+
+```
+
+```{r}
+
+test_data %>%
+  rename(Lasso_Y_hat = s1,
+         OLS_Y_hat = lm_predit,
+         OLS_logY_hat = log_ols) %>%
+  select(Price, Lasso_Y_hat, OLS_Y_hat, OLS_logY_hat) %>%
+  ggplot(aes(x = 1:nrow(.))) +
+  geom_point(aes(y = Price), color = "blue") +
+  geom_line(aes(y = OLS_logY_hat), color = "black")
+
+```

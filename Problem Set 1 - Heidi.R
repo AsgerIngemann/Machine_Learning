@@ -248,3 +248,96 @@ SimulationStudy <- function(){
 SimulationStudy()
 
 ############################## Problem 5 ######################################
+# Google and read about the regsubsets() function from the leaps library for R.
+# In this exercise, you will familiarise yourself with the function using
+# simulated data.
+
+install.packages("leaps")
+library(leaps)
+
+size = 500
+
+X <- rnorm(size, 0, 1)
+eps <- rnorm(size, 0, 1)
+beta <- runif(10, 0, 5)
+Y <- beta[1] + beta[2] * X + beta[3] * X^2 + beta[4] * X^3 + eps
+
+ProducingX <- function(X){
+  X1 <- X
+  X2 <- X^2
+  X3 <- X^3
+  X4 <- X^4
+  X5 <- X^5
+  X6 <- X^6
+  X7 <- X^7
+  X8 <- X^8
+  X9 <- X^9
+  X10 <- X^10
+  
+  return(list(X1 = X1, X2 = X2, X3 = X3, X4 = X4, X5 = X5, X6 = X6, X7 = X7, 
+              X8 = X8, X9 = X9, X10 = X10))
+}
+
+Variables <- ProducingX(X)
+
+data <- as.data.frame(cbind(Y, Variables$X1, Variables$X2, Variables$X3, Variables$X4,
+                            Variables$X5, Variables$X6, Variables$X7, Variables$X8,
+                            Variables$X9, Variables$X10))
+
+# a)
+BestSubset <- regsubsets(Y ~ ., data = data, method = "exhaustive", nvmax = 10)
+BestSubset
+
+# b)
+Forward <- regsubsets(Y ~ ., data = data, method = "forward", nvmax = 10)
+Forward
+
+# c)
+Backward <- regsubsets(Y ~ ., data = data, method = "backward", nvmax = 10)
+Backward
+
+# d)
+## regsubsets() likes data frames, glmnet() likes matrices
+Variables <- cbind(Variables$X1, Variables$X2, Variables$X3, Variables$X4,
+                   Variables$X5, Variables$X6, Variables$X7, Variables$X8,
+                   Variables$X9, Variables$X10)
+
+CrossValidation <- cv.glmnet(Variables, Y, alpha = 1)
+Lambda <- CrossValidation$lambda.min
+
+LassoEstimation <- glmnet(Variables, Y, alpha = 1, lambda = Lambda)
+LassoEstimation$beta
+
+# e)
+Y <- beta[1] + beta[7]*X^7 + eps
+
+data <- as.data.frame(cbind(Y, Variables$X1, Variables$X2, Variables$X3, Variables$X4,
+                            Variables$X5, Variables$X6, Variables$X7, Variables$X8,
+                            Variables$X9, Variables$X10))
+
+## Best Subset Selection
+BestSubset <- regsubsets(Y ~ ., data = data, method = "exhaustive", nvmax = 10)
+summary(BestSubset)
+
+## Forward Stepwise Selection
+Forward <- regsubsets(Y ~ ., data = data, method = "forward", nvmax = 10)
+summary(Forward)
+
+## Backward StepWise Selection
+Backward <- regsubsets(Y ~ ., data = data, method = "backward", nvmax = 10)
+summary(Backward)
+
+# LASSO
+## regsubsets() likes data frames, glmnet() likes matrices
+Variables <- cbind(Variables$X1, Variables$X2, Variables$X3, Variables$X4,
+                   Variables$X5, Variables$X6, Variables$X7, Variables$X8,
+                   Variables$X9, Variables$X10)
+
+CrossValidation <- cv.glmnet(Variables, Y, alpha = 1)
+Lambda <- CrossValidation$lambda.min
+
+LassoEstimation <- glmnet(Variables, Y, alpha = 1, lambda = Lambda)
+LassoEstimation$beta
+
+
+############################ Exercise 6 #######################################

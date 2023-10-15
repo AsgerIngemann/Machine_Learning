@@ -1,0 +1,479 @@
+---
+title: "Problem Set 2"
+output: html_document
+date: '2023-10-04'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 999)
+set.seed(1)
+```
+
+Write a function that performs spectral clustering and call it spec_clut. Save it in a script called spec_clus.R. The function Should:
+
+Take as inputs the normalised Laplacian matrix and the number of communities k.
+
+Return a vector of community indices for the vertices.
+
+Set the nstart argument of k-means to 1000 in your function. Load in the campnet data set up an undirected network for it and test out your function
+
+```{r}
+
+library(igraph)
+library(readr)
+
+campnet_Copy <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/campnet - Copy.csv", row.names = 1)
+campnet_Attribute <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/campnet_attr.csv")
+
+A <- as.matrix(campnet_Copy)
+G <- graph.adjacency(A, mode = "undirected")
+
+plot(G)
+
+plot(G, layout = layout.fruchterman.reingold, vertex.label.cex = 0.75, vertex.label.color = "black", 
+     vertex.size = 8, vertex.label.dist = 1, vertex.color = campnet_Attribute$Role,
+     edge.arrow.size = 0.1)
+
+hist(degree(G))
+
+D <- diag(degree(G))
+
+L <- D - A
+
+if(colSums(A) == 0) {
+  
+  colSums(A) == 0
+  
+}
+
+
+Laplacian_normalized <- function(A) {
+  
+  A <- A + t(A)
+  G <- graph.adjacency(A)
+  d <- degree(G)
+  D <- diag(d)
+  L <- D - A
+  L_n <- t(d^(-1/2) * L) * d^(-1/2)
+  
+  L_n[is.na(L_n)] <- 0
+  
+  return(L_n)
+  
+}
+
+```
+
+
+
+```{r}
+
+library(DescTools)
+
+spec_clust <- function(ln, k) {
+  
+  ### Find the eigenvectors and eigenvalues of Lap
+  
+  eigen <- eigen(ln)
+  length <- length(eigen$values)
+  
+  U <- matrix(eigen$vectors[,(length - k + 1):length], nrow = nrow(ln), ncol = k)
+  X <- U / sqrt(rowSums(U^2))
+  X[is.na(X)] <- 0
+  
+  Cluster <- kmeans(X, k, iter.max = 10, nstart = 1000)
+  
+  return((Cluster$cluster))
+  
+}
+
+```
+
+
+```{r}
+
+cluster <- spec_clut(Ln, 3)
+
+plot(G, layout = layout.fruchterman.reingold, vertex.label.cex = 0.75, vertex.label.color = "black", 
+     vertex.size = 8, vertex.label.dist = 1, vertex.color = cluster,
+     edge.arrow.size = 0.1)
+
+```
+Consider the S&P-100 data set from the slides and tutorials. Load in the data and estimate the network with λ = 0.6.
+
+Calculate the density of the estimated network.
+
+```{r}
+
+sp100_dates <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/sp100-dates - Copy.csv")
+sp100_info <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/sp100-info - Copy.csv")
+sp100_returns <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/sp100-returns - Copy.csv")
+
+head(sp100_dates)
+head(sp100_info)
+head(sp100_returns)
+
+library(space)
+
+heatmap(cor(sp100_returns), Rowv = NA, Colv = NA, scale = "none")
+
+Y <- matrix(0, nrow = nrow(sp100_returns), ncol = ncol(sp100_returns))
+
+for (i in 1:ncol(sp100_returns)) {
+  
+  model <- lm(sp100_returns[,i] ~ rowMeans(sp100_returns))
+  Y[,i] <- model$residuals
+  
+}
+
+heatmap(cor(Y), Rowv = NA, Colv = NA, scale = "none")
+
+sample <- space.joint(Y, lam1 = 0.6 * nrow(Y))
+A <- 1*(sample$ParCor != 0) - diag(rep(1,ncol(Y)))
+
+network <- graph.adjacency(A)
+
+#### This is the density of the network ####
+
+graph.density(network)
+
+#### Calculate the normalized degree centrality, eigenvector centrality and Page Rank centrality of the vertices.
+
+eigen_centrality(network)$vector
+
+page_rank(network)$vector
+
+degree(network) / (ncol(Y) - 1)
+
+#### Is the graph connected?
+
+plot(network)
+
+#### well visually it is clearly not connected! But we can also make use of R for this.
+
+A <- as.matrix(as_adjacency_matrix(network))
+
+eigen(diag(degree(network)) - A)$vector[,ncol(Y)-1]
+is_connected(network)
+
+#### We also see that the eigen vector for the second last column is also 0 so it is not connected.
+
+components(network)
+
+#### Calculate the normalized Laplacian
+
+ln <- Laplacian_normalized(A)
+
+#### Apply spectral clustering to the network.
+
+lo <- layout_with_kk(network)
+lo <- norm_coords(lo, ymin=-1, ymax=1, xmin=-1, xmax=1)
+
+plot(network, layout = lo*3, vertex.label.cex = 0.75, vertex.label.color = "black", 
+     vertex.size = 5, vertex.label.dist = 1, vertex.label = sp100_info$Ticker.symbol, vertex.color = 1,
+     edge.arrow.size = 0.1, rescale = FALSE)
+
+cluster <- spec_clust(ln, 1)
+
+plot(network, layout = lo*1.5, vertex.label.cex = 0.75, vertex.label.color = "black", 
+     vertex.size = 7, vertex.label.dist = 1, vertex.label = sp100_info$Ticker.symbol, vertex.color = cluster,
+     edge.arrow.size = 0.1, rescale = FALSE)
+
+table(cluster)
+
+```
+
+```{r}
+
+trump_adj <- as.matrix(read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/trump_adj.csv"))
+trump_names <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/trump_names.csv")
+
+head(trump_adj)
+head(trump_names)
+
+A <- trump_adj[,-1]
+
+G <- graph.adjacency(A)
+
+lo <- layout_with_kk(G)
+lo <- norm_coords(lo, ymin=-1, ymax=1, xmin=-1, xmax=1)
+
+plot(network, layout = lo, vertex.label.cex = 0.75, vertex.label.color = "black", 
+     vertex.size = 7, vertex.label.dist = 1, vertex.label = trump_names$realDonaldTrump,
+     edge.arrow.size = 0.1, rescale = FALSE)
+
+graph.density(G)
+
+A <- as.matrix(as_adjacency_matrix(G))
+
+Lm <- Laplacian_normalized(A)
+
+cluster <- spec_clust(Lm, 3)
+
+plot(network, layout = lo, vertex.label.cex = 0.75, vertex.label.color = "black", 
+     vertex.size = 7, vertex.label.dist = 1, vertex.label = trump_names$realDonaldTrump,
+     vertex.color = cluster, edge.arrow.size = 0.1, rescale = FALSE)
+
+```
+
+```{r}
+
+library(tidyverse)
+
+got_s1_edges <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/got-s1-edges.csv")
+
+got_s1_nodes <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/got-s1-nodes.csv")
+
+View(got_s1_edges)
+View(got_s1_nodes)
+
+order <- match(got_s1_edges$Source, got_s1_nodes$Id)
+
+got_s1_nodes$Community[order]
+
+G <- graph.edgelist(as.matrix(got_s1_edges[,1:2]))
+
+lo <- layoutByAttribute(G, attribute = 1)
+lo <- norm_coords(lo, ymin=-1, ymax=1, xmin=-1, xmax=1)
+
+plot(network, layout = lo*1, vertex.label.cex = 0.6, vertex.label.color = "black", 
+     vertex.size = 7, vertex.label.dist = 1, vertex.label = got_s1_nodes$Label[order], edge.arrow.size = 0.1, rescale = TRUE, vertex.color = got_s1_nodes$Community[order])
+
+```
+
+```{r}
+
+ho_pe <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/ho-pe.csv", row.names = 1)
+ho_states <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/ho-states.csv")
+
+head(ho_pe)
+head(ho_states)
+
+heatmap(cor(ho_pe))
+
+f_hat <- as.matrix(ho_pe) %*% eigen(cor(ho_pe))$vector[,1]
+
+Y <- matrix(0, nrow = nrow(ho_pe), ncol(ho_pe))
+
+for (i in 1:ncol(ho_pe)) {
+  
+  model <- lm(ho_pe[,i] ~ f_hat)
+  Y[,i] <- model$residuals
+  
+}
+
+heatmap(cor(Y))
+
+```
+It is much less red!
+
+```{r}
+
+library(space)
+
+lambda.range <- seq(0.1, 3.0, 0.1)
+
+bic.vec  <- rep(0, length(lambda.range))
+npar.vec <- rep(0, length(lambda.range))
+
+P.hat.list  <- list()
+
+network.trace <- matrix(0, length(lambda.range), ncol(Y) * (ncol(Y) - 1) / 2 )
+
+for( l in 1:length(lambda.range) ) {
+  
+  # Run SPACE for the candidate lambda value times T:
+  results <- hush(space.joint(Y, lam1 = lambda.range[l] * nrow(Y)))
+  
+  # The hush() function silences annoying print messages.
+  
+  # Calculate the BIC and number of non-zero partial correlations:
+  bic_res <- bic_space(results)
+  bic.vec[l] <- bic_res[[1]]
+  npar.vec[l] <- bic_res[[2]]
+  
+  # Save the partial correlation matrix into our list:
+  P.hat   <- results$ParCor 
+  P.hat.list[[l]] <- P.hat
+  
+  # Save the lower triangular part of the partial correlation matrix as a row in the network.trace matrix:
+  network.trace[l,] <- (P.hat[ lower.tri(P.hat)==1 ])[1:(ncol(Y) * (ncol(Y)-1) / 2)]
+  
+  # Print message every 5 lambda values:
+  if( l %% 5 == 0){
+    cat("Done with", l, "/", length(lambda.range), "lambda values.\r")
+  }
+}
+
+# The index of the optimal lambda:
+lambda.opt.ind <- which(bic.vec == min(bic.vec))
+
+# The selected lambda: 
+lambda.range[lambda.opt.ind]
+
+# The selected partial correlation matrix:
+P.hat <- P.hat.list[[lambda.opt.ind]]
+
+network <- hush(space.joint(Y, lambda.range[lambda.opt.ind] * nrow(Y)))
+
+```
+
+```{r}
+
+library(igraph)
+
+A <- 1*(network$ParCor != 0) - diag(rep(1,ncol(Y)))
+
+Ag <- graph.adjacency(as.matrix(A), "undirected")
+
+graph.density(Ag)
+
+hist(degree(Ag))
+table(degree(Ag))
+
+```
+We clearly see a power law structure in this network, many people with few connections and a few people with many connections!
+
+```{r}
+
+Ln <- Laplacian_normalized(A)
+
+cluster <- spec_clust(Ln, 3)
+
+plot(Ag, vertex.color = cluster)
+
+### install.packages("mosaic")
+library(mosaic)
+
+df <- cbind(ho_states,cluster)
+
+mUSMap(data = df, key = "State", fill = "cluster")
+
+```
+Maybe some political map of the US
+
+```{r}
+
+Blockbuster <- function(Y,k) {
+  
+  cov_matrix <- cor(Y)
+  U <- eigen(cov_matrix)$vector[,1:k]
+  euclidean_norm <- sqrt(rowSums(U)^2)
+  
+  X <- U / euclidean_norm
+  
+  cluster <- kmeans(X, k, iter.max = 10, nstart = 1000)
+  
+  return(cluster$cluster)
+  
+}
+
+cluster2 <- Blockbuster(Y,3)
+
+df <- cbind(df, cluster2)
+
+mUSMap(data = df, key = "State", fill = "cluster2")
+
+```
+
+
+```{r}
+
+### install.packages("neuralnet")
+library(neuralnet)
+
+Hitters <- read.csv("C:/Users/asger/OneDrive - Aarhus universitet/UNI/Machine Learning/Machine_Learning/Problemset 2/Data/Hitters - Copy.csv")
+
+Hitters_int <- Hitters %>%
+  select(-League, -Division, -NewLeague, -X)
+
+summary(Hitters_int)
+
+hist(Hitters_int$Salary)
+
+library(mice)
+
+imp <- mice(Hitters_int)
+Hitters_full <- complete(imp)
+
+summary(Hitters_full)
+
+##### Normalisation:
+max_vec <- apply(Hitters_full, 2, max)
+min_vec <- apply(Hitters_full, 2, min)
+Hitters_full_nom <- as.data.frame(scale(Hitters_full, center = min_vec, scale = max_vec - min_vec))
+
+### Split data into training and test
+
+train_ind <- sample(1:length(Hitters_full_nom), length(Hitters_full_nom) * 0.7)
+
+train_data <- Hitters_full_nom[train_ind,]
+test_data <- Hitters_full_nom[-train_ind,]
+
+#### Train linear model
+
+library(forecast)
+
+lm_model <- lm(log(Salary) ~ ., data = train_data)
+pred_OLS <- predict(lm_model, test_data)
+
+MSE_OLS <- mean((pred_OLS - test_data$Salary)^2)
+
+accuracy(pred_OLS, test_data$Salary)
+
+#### Train Lasso model
+
+library(glmnet)
+
+X <- train_data %>%
+  select(-Salary) %>%
+  as.matrix(.)
+Y <- train_data$Salary
+
+cv_out <- cv.glmnet(X, log(Y), alpha = 1, nfolds = 100)
+plot(cv_out)
+
+lambda_min <- cv_out$lambda.min
+
+lasso_model <- glmnet(X, log(Y), alpha = 1, lambda = lamda_min)
+
+coef(lasso_model)
+
+pred_lasso <- as.vector(predict(lasso_model, newx = as.matrix(test_data[,-17])))
+
+accuracy(pred_lasso, test_data$Salary)
+
+MSE_lasso <- mean((pred_lasso - test_data$Salary)^2)
+
+#### Train neural network model
+
+nn_model <- neuralnet(log(Salary) ~ ., data = train_data, hidden = c(5,3,2), linear.output = T)
+plot(nn_model)
+pred_nn <- predict(nn_model, test_data)
+
+MSE_nn <- mean((pred_nn - test_data$Salary)^2)
+
+#### Print models
+
+print(c(MSE_OLS, MSE_nn, MSE_lasso))
+
+plot(test_data$Salary, pred_nn, col = "red", main = "Neural Network")
+abline(0, 1)
+
+plot(test_data$Salary, pred_OLS, col = "blue", main = "Linear Regression")
+abline(0,1)
+
+plot(test_data$Salary, pred_nn, col = "red", main = "OLS and NN", xlim = c(0,6), ylim = c(0,1))
+points(test_data$Salary, pred_OLS, col = "blue")
+abline(0,1)
+
+```
+
+```{r}
+
+plot(test_data$Salary, pred_lasso)
+abline(0,1)
+
+```
+
